@@ -1,0 +1,11 @@
+# config_covariance.yaml
+pk_dir: /pscratch/sd/n/ndeiosso/BGS_ANY_DR2/pk_ANY/prerecon/
+catalog_dir: /pscratch/sd/n/ndeiosso/BGS_ANY_DR2/ANY_magcut_catalog/
+randoms_dir: /pscratch/sd/n/ndeiosso/BGS_ANY_DR2/ANY_magcut_catalog/
+
+kmin: 0
+kmax: 0.3
+kstep: 0.005
+
+window_kernel: /pscratch/sd/n/ndeiosso/BGS_ANY_DR2/DR2/LSS/loa-v1/LSScats/v1.1/desipipe/cov_2pt/thecov/v1.1/prerecon/full/cov_gaussian_{tracer}_{region}_z{zmin}_{zmax}.txt
+output_covariance: /pscratch/sd/n/ndeiosso/BGS_ANY_DR2/DR2/LSS/loa-v1/LSScats/v1.1/desipipe/cov_2pt/thecov/v1.1/prerecon/full/cov_gaussian_{tracer}_{region}_z{zmin}_{zmax}.txt

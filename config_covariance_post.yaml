@@ -1,0 +1,11 @@
+# config_covariance.yaml
+pk_dir: /global/cfs/cdirs/desi/survey/catalogs/DA2/analysis/loa-v1/LSScats/v1.1/BAO/unblinded/desipipe/2pt/recon_sm15_IFFT_recsym/pk/
+catalog_dir: /global/cfs/cdirs/desi/survey/catalogs/DA2/analysis/loa-v1/LSScats/v1.1/BAO/unblinded/desipipe/2pt/recon_sm15_IFFT_recsym/
+randoms_dir: /global/cfs/cdirs/desi/survey/catalogs/DA2/analysis/loa-v1/LSScats/v1.1/BAO/unblinded/desipipe/2pt/recon_sm15_IFFT_recsym/
+
+kmin: 0
+kmax: 0.3
+kstep: 0.005
+
+window_kernel: /pscratch/sd/n/ndeiosso/BGS_ANY_DR2/DR2/LSS/loa-v1/LSScats/v1.1/desipipe/cov_2pt/thecov/v1.1/postrecon/Uend/cov_gaussian_{tracer}_{region}_z{zmin}_{zmax}.txt
+output_covariance: /pscratch/sd/n/ndeiosso/BGS_ANY_DR2/DR2/LSS/loa-v1/LSScats/v1.1/desipipe/cov_2pt/thecov/v1.1/postrecon/Uend/cov_gaussian_{tracer}_{region}_z{zmin}_{zmax}.txt
