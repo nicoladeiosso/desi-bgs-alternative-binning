@@ -75,4 +75,4 @@ Use:
 python fit_pimped.py
 ```
 
-Catalog: prerecon are in ANY_magcut_catalog, postrecon are in postrecon
+Catalog: prerecon are in ANY_magcut_catalog, postrecon are in postrecon (to be uploaded if needed)
