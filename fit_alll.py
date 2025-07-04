@@ -108,6 +108,8 @@ def fit_pk_cov(pk_file, cov_file, output_dir, is_postrecon=False, kmin=0.02, kma
     observable = TracerPowerSpectrumMultipolesObservable(data=data, covariance=cov, k=k_selected, ells=ell_to_include, theory=theory)
     likelihood = ObservablesGaussianLikelihood(observables=[observable])
 
+    print(theory.params.names())
+    
     # Parametri
     params = likelihood.runtime_info.pipeline.params
     params['qap'].update(value=1., fixed=True)
@@ -139,6 +141,9 @@ def fit_pk_cov(pk_file, cov_file, output_dir, is_postrecon=False, kmin=0.02, kma
     if likelihood.mpicomm.rank == 0:
         likelihood.log_info('Use analytic marginalization for {}.'.format(likelihood.all_params.names(solved=True)))
 
+    solved_params = likelihood.all_params.select(solved=True)
+    print("Marginalized Params(solved):")
+    print(sorted(p.basename for p in solved_params))
     
     profiler = MinuitProfiler(likelihood, seed=42)
     profiles = profiler.maximize(niterations=50)
