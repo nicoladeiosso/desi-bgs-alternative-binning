@@ -121,14 +121,25 @@ def fit_pk_cov(pk_file, cov_file, output_dir, is_postrecon=False, kmin=0.02, kma
 
     params['b1'].update(prior={'limits': [0.2, 4.]})
     params['qiso'].update(prior={'limits': [0.8, 1.2]})
-    params['sigmas'].update(prior={'dist': 'norm', 'loc': 2.0, 'scale': 2.0})
+    params['sigmas'].update(prior={'dist': 'norm', 'loc': 2.0, 'scale': 2.0, 'limits': [0., 20.]}, 'fixed': False)
+       
     if is_postrecon:
-        params['sigmapar'].update(prior={'dist': 'norm', 'loc': 8.0, 'scale': 2.0})
-        params['sigmaper'].update(prior={'dist': 'norm', 'loc': 3.0, 'scale': 1.0})
+        params['sigmapar'].update(prior={'dist': 'norm', 'loc': 8.0, 'scale': 2.0, 'limits': [0., 20.]}, fixed=False)
+        params['sigmaper'].update(prior={'dist': 'norm', 'loc': 3.0, 'scale': 1.0, 'limits': [0., 20.]}, fixed=False)
     else:
-        params['sigmapar'].update(prior={'dist': 'norm', 'loc': 10.0, 'scale': 2.0})
-        params['sigmaper'].update(prior={'dist': 'norm', 'loc': 6.5, 'scale': 1.0})
+        params['sigmapar'].update(prior={'dist': 'norm', 'loc': 10.0, 'scale': 2.0, 'limits': [0., 20.]}, fixed=False)
+        params['sigmaper'].update(prior={'dist': 'norm', 'loc': 6.5, 'scale': 1.0, 'limits': [0., 20.]}, fixed=False)
+    
     observable.init.theory = theory
+
+    marg = True
+    if marg:
+        for param in likelihood.all_params.select(basename=['al*_*']):
+            param.update(derived='.auto')
+    if likelihood.mpicomm.rank == 0:
+        likelihood.log_info('Use analytic marginalization for {}.'.format(likelihood.all_params.names(solved=True)))
+
+    
     profiler = MinuitProfiler(likelihood, seed=42)
     profiles = profiler.maximize(niterations=50)
 
