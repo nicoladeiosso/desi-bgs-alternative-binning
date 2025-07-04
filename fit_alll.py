@@ -121,7 +121,7 @@ def fit_pk_cov(pk_file, cov_file, output_dir, is_postrecon=False, kmin=0.02, kma
 
     params['b1'].update(prior={'limits': [0.2, 4.]})
     params['qiso'].update(prior={'limits': [0.8, 1.2]})
-    params['sigmas'].update(prior={'dist': 'norm', 'loc': 2.0, 'scale': 2.0, 'limits': [0., 20.]}, 'fixed': False)
+    params['sigmas'].update(prior={'dist': 'norm', 'loc': 2.0, 'scale': 2.0, 'limits': [0., 20.]}, fixed = False)
        
     if is_postrecon:
         params['sigmapar'].update(prior={'dist': 'norm', 'loc': 8.0, 'scale': 2.0, 'limits': [0., 20.]}, fixed=False)
