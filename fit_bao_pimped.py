@@ -90,6 +90,8 @@ theory = DampedBAOWigglesTracerPowerSpectrumMultipoles(
     broadband='pcs'
 )
 
+print(theory.params.names())
+
 observable = TracerPowerSpectrumMultipolesObservable(
     data=data,
     covariance=cov,
@@ -101,30 +103,44 @@ observable = TracerPowerSpectrumMultipolesObservable(
 likelihood = ObservablesGaussianLikelihood(observables=[observable])
 
 params = likelihood.runtime_info.pipeline.params
-print("\nParametri attivi:")
+print("\nActive parameters:")
 print(sorted(params.basenames()))
 # Parameters to fix for 1D analysis
-params['qap'].update(value=1., fixed=True)
+#params['qap'].update(value=1., fixed=True)
+
 params['dbeta'].update(value=1., fixed=True)
+params['qap'].update(value=1., fixed=True)
 params['sigmapar'].update(fixed=False) 
 params['sigmaper'].update(fixed=False)  
 
+#for name in params.basenames():
+#    if name.startswith('al2_'):
+#        params[name].update(value=0., fixed=True)
+    
 for name in params.basenames():
-    if name.startswith('al2_'):
-        params[name].update(value=0., fixed=True)
-
+    if name.startswith('al2_'): params[name].update(value=0., fixed=True)
+    if name.startswith('al0_'): params[name].update(prior={'dist': 'norm', 'loc': 0., 'scale': 1e4}, fixed=False)
+        
 params['b1'].update(prior={'limits': [0.2, 4.]})
 params['qiso'].update(prior={'limits': [0.8, 1.2]})
-params['sigmas'].update(prior={'dist': 'norm', 'loc': 2.0, 'scale': 2.0})
-params['sigmapar'].update(prior={'dist': 'norm', 'loc': 10.0, 'scale': 2.0})
-params['sigmaper'].update(prior={'dist': 'norm', 'loc': 6.5, 'scale': 1.0})
+params['sigmas'].update(prior={'dist': 'norm', 'loc': 2.0, 'scale': 2.0, 'limits': [0., 20.]}, fixed = False)
 
-# Pline params
-for name in params.basenames():
-    if name.startswith('al0_'):
-        params[name].update(prior={'dist': 'norm', 'loc': 0., 'scale': 1e4})
+params['sigmapar'].update(prior={'dist': 'norm', 'loc': 10.0, 'scale': 2.0, 'limits': [0., 20.]}, fixed=False)
+params['sigmaper'].update(prior={'dist': 'norm', 'loc': 6.5, 'scale': 1.0, 'limits': [0., 20.]}, fixed=False)
 
 observable.init.theory = theory
+
+
+marg = True
+if marg:
+    for param in likelihood.all_params.select(basename=['al*_*']):
+        param.update(derived='.auto')
+if likelihood.mpicomm.rank == 0:
+    likelihood.log_info('Use analytic marginalization for {}.'.format(likelihood.all_params.names(solved=True)))
+
+solved_params = likelihood.all_params.select(solved=True)
+print("Marginalized Params(solved):")
+print(sorted(p.basename for p in solved_params))
 
 #Check
 print("\n" + "="*50 + " CONFIG " + "="*50)
