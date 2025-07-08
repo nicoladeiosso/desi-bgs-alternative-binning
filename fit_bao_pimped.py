@@ -100,6 +100,7 @@ observable = TracerPowerSpectrumMultipolesObservable(
     data=data,
     covariance=cov,
     k=k_selected,
+    kinlim=(0.001, 0.35),
     ells=ell_to_include,
     theory=theory
 )
