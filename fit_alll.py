@@ -85,24 +85,25 @@ def fit_pk_cov(pk_file, cov_file, output_dir, is_postrecon=False, kmin=0.02, kma
     data = np.concatenate([data_dict[ell] for ell in ell_to_include])
 
     cov = np.loadtxt(cov_file)
-    n_k_total = len(k)  # Esempio: 60 punti totali
-    
-    # ℓ to use
-    ells_to_use = [0]
-    all_ells = [0, 2, 4]  #Cov matrix order
-    mask = (k >= 0.02) & (k <= 0.3)
-    k_indices = np.where(mask)[0]
-    n_k_selected = len(k_indices)
-    
-    indices = []
-    for i, ell in enumerate(all_ells):
-        if ell in ells_to_use:
-            indices.extend([i * n_k_total + idx for idx in k_indices])
-    
-    cov = cov[np.ix_(indices, indices)]
+    dk_cov = 0.005
+    k_cov = np.arange(0, 0.3, dk_cov) + dk_cov / 2
+    N_k = len(k_cov)
 
-    # Setup modello
-    z = 0.1  # hardcoded, da generalizzare in futuro
+    k_mask = np.isclose(k_cov[:, None], k_selected[None, :], atol=1e-10).any(axis=1)
+    k_indices = np.where(k_mask)[0]
+
+    multipole_offset = {0: 0 * N_k, 2: 1 * N_k, 4: 2 * N_k}
+
+    indices_selected = []
+    for ell in ell_selected:
+        offset = multipole_offset[ell]
+        indices_selected.extend(offset + k_indices)
+
+    indices_selected = np.array(indices_selected)
+    cov = cov[np.ix_(indices_selected, indices_selected)]
+
+    # Setup model
+    z = 0.1  
     template = BAOPowerSpectrumTemplate(z=z, fiducial='DESI', apmode='qisoqap')
     theory = DampedBAOWigglesTracerPowerSpectrumMultipoles(template=template, ells=ell_to_include, broadband='pcs')
     observable = TracerPowerSpectrumMultipolesObservable(data=data, covariance=cov, k=k_selected, ells=ell_to_include, theory=theory)
@@ -110,7 +111,7 @@ def fit_pk_cov(pk_file, cov_file, output_dir, is_postrecon=False, kmin=0.02, kma
 
     print(theory.params.names())
     
-    # Parametri
+    # Parameters
     params = likelihood.runtime_info.pipeline.params
     params['qap'].update(value=1., fixed=True)
     params['dbeta'].update(value=1., fixed=True)
@@ -157,7 +158,7 @@ def fit_pk_cov(pk_file, cov_file, output_dir, is_postrecon=False, kmin=0.02, kma
     with open(result_tex_path, 'w') as f:
         f.write(profiles.to_stats(tablefmt='latex'))
 
-    print(f"Salvati: {result_path}, {result_tex_path}")
+    print(f"Saved: {result_path}, {result_tex_path}")
     #model_prediction = observable(**params.to_dict())
     ## Salva plot
     #plt.figure()
@@ -170,7 +171,7 @@ def fit_pk_cov(pk_file, cov_file, output_dir, is_postrecon=False, kmin=0.02, kma
     #plt.savefig(os.path.join(output_dir, f'{basename}_fit_plot.png'))
     #plt.close()
 
-    print(f"Finito fit per {basename}")
+    print(f"Fit ended for {basename}")
 
 def run_all_fits(pk_dir, cov_dir, output_dir, is_postrecon=False):
     os.makedirs(output_dir, exist_ok=True)
@@ -182,14 +183,14 @@ def run_all_fits(pk_dir, cov_dir, output_dir, is_postrecon=False):
         basename = standardize_basename(pk)
         matching_covs = [c for c in cov_files if basename in c]
         if not matching_covs:
-            print(f"Cov non trovata per {basename}")
+            print(f"Cov not found for {basename}")
             continue
         try:
             fit_pk_cov(pk, matching_covs[0], output_dir, is_postrecon=is_postrecon)
         except Exception as e:
-            print(f"Errore su {basename}: {e}")
+            print(f"Error on {basename}: {e}")
 
-# Esegui per prerecon
+# Prerecon
 run_all_fits(
     pk_dir='/pscratch/sd/n/ndeiosso/BGS_ANY_DR2/DR2/LSS/loa-v1/LSScats/v1.1/desipipe/2pt/pk',
     cov_dir='/pscratch/sd/n/ndeiosso/BGS_ANY_DR2/DR2/LSS/loa-v1/LSScats/v1.1/desipipe/cov_2pt/thecov/v1.1/prerecon',
@@ -197,7 +198,7 @@ run_all_fits(
     is_postrecon=False
 )
 
-# Esegui per postrecon
+# Postrecon
 run_all_fits(
     pk_dir='/pscratch/sd/n/ndeiosso/BGS_ANY_DR2/DR2/LSS/loa-v1/LSScats/v1.1/desipipe/2pt/recon_sm15_IFFT_recsym/pk',
     cov_dir='/pscratch/sd/n/ndeiosso/BGS_ANY_DR2/DR2/LSS/loa-v1/LSScats/v1.1/desipipe/cov_2pt/thecov/v1.1/postrecon',
