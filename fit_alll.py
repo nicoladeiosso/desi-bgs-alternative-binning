@@ -106,7 +106,7 @@ def fit_pk_cov(pk_file, cov_file, output_dir, is_postrecon=False, kmin=0.02, kma
     z = 0.1  
     template = BAOPowerSpectrumTemplate(z=z, fiducial='DESI', apmode='qisoqap')
     theory = DampedBAOWigglesTracerPowerSpectrumMultipoles(template=template, ells=ell_to_include, broadband='pcs')
-    observable = TracerPowerSpectrumMultipolesObservable(data=data, covariance=cov, k=k_selected, ells=ell_to_include, theory=theory)
+    observable = TracerPowerSpectrumMultipolesObservable(data=data, covariance=cov, k=k_selected, kinlim=(0.001, 0.35), ells=ell_to_include, theory=theory)
     likelihood = ObservablesGaussianLikelihood(observables=[observable])
 
     print(theory.params.names())
