@@ -58,22 +58,26 @@ data_dict = {
 
 data = np.concatenate([data_dict[ell] for ell in ell_to_include])
 
-cov = np.loadtxt('/pscratch/sd/n/ndeiosso/BGS_ANY_DR2/DR2/LSS/loa-v1/LSScats/v1.1/desipipe/cov_2pt/thecov/v1.1/prerecon/full/cov_gaussian_BGS_BRIGHT-20.2_GCcomb_z0.1_0.25.txt') 
-n_k_total = len(k)  # Esempio: 60 punti totali
+# Load the covariance
 
-# ℓ to use
-ells_to_use = [0]
-all_ells = [0, 2, 4]  #Cov matrix order
-mask = (k >= 0.02) & (k <= 0.3)
-k_indices = np.where(mask)[0]
-n_k_selected = len(k_indices)
+dk_cov = 0.005
+k_cov = np.arange(0, 0.3, dk_cov) + dk_cov / 2
+N_k = len(k_cov)
 
-indices = []
-for i, ell in enumerate(all_ells):
-    if ell in ells_to_use:
-        indices.extend([i * n_k_total + idx for idx in k_indices])
+k_mask = np.isclose(k_cov[:, None], k_selected[None, :], atol=1e-10).any(axis=1)
+k_indices = np.where(k_mask)[0]
 
-cov = cov[np.ix_(indices, indices)]
+multipole_offset = {0: 0 * N_k, 2: 1 * N_k, 4: 2 * N_k}
+
+indices_selected = []
+for ell in ell_selected:
+    offset = multipole_offset[ell]
+    indices_selected.extend(offset + k_indices)
+
+indices_selected = np.array(indices_selected)
+
+cov = np.loadtxt('/pscratch/sd/n/ndeiosso/BGS_ANY_DR2/DR2/LSS/loa-v1/LSScats/v1.1/desipipe/cov_2pt/thecov/v1.1/prerecon/Uend/cov_gaussian_BGS_BRIGHT-20.2_GCcomb_z0.1_0.25.txt')
+cov = cov[np.ix_(indices_selected, indices_selected)]
 
 
 print("\nData:")
