@@ -10,6 +10,17 @@ import re
 setup_logging()
 cosmo = DESI()
 
+
+def load_wmatrix(self, mode='poles'):
+    """Load matrix."""
+    from pypower import MeshFFTWindow, BaseMatrix
+    toret = MeshFFTWindow.load(self)
+    try:
+        toret = getattr(toret, mode)
+    except AttributeError:
+        toret =  BaseMatrix.load(self)
+    return toret
+
 def parse_real(complex_str):
     pattern = re.compile(r'([+-]?\d+\.\d+e[+-]?\d+)')
     match = pattern.match(complex_str)
@@ -26,18 +37,18 @@ def read_power_spectrum_data(filename):
                 continue
             
             try:
-                kmid = float(parts[1])
+                kavg = float(parts[2])
                 P0 = parse_real(parts[3])
                 P2 = parse_real(parts[4])
                 P4 = parse_real(parts[5])
-                data.append((kmid, P0, P2, P4))
+                data.append((kavg, P0, P2, P4))
             except ValueError as e:
                 print("Parsing error:", e)
                 continue
     
     return np.array(data)
 
-txt_path = '/pscratch/sd/n/ndeiosso/BGS_ANY_DR2/pk_ANY/prerecon/pkpoles_BGS_BRIGHT-20.2_GCcomb_z0.1-0.25_default_FKP_lin_nran18_cellsize6_boxsize4000.0_d0.005.txt'
+txt_path = '/global/cfs/cdirs/desi/survey/catalogs/DA2/analysis/loa-v1/LSScats/v1.1/BAO/unblinded/desipipe/2pt/pk/pkpoles_BGS_BRIGHT-21.35_GCcomb_z0.1-0.4_default_FKP_lin_nran18_cellsize6_boxsize4000_d0.005.txt'
 
 data_array = read_power_spectrum_data(txt_path)
 
@@ -60,25 +71,24 @@ data = np.concatenate([data_dict[ell] for ell in ell_to_include])
 
 # Load the covariance
 
-dk_cov = 0.005
-k_cov = np.arange(0, 0.3, dk_cov) + dk_cov / 2
-N_k = len(k_cov)
+cov = np.loadtxt('/global/cfs/cdirs/desi/users/oalves/thecovs/y3/unblinded/loa-v1/v1.1/pre/cov_gaussian_BGS_BRIGHT-21.35_GCcomb_z0.1_0.4.txt')
+n_k_total = len(k) 
 
-k_mask = np.isclose(k_cov[:, None], k_selected[None, :], atol=1e-10).any(axis=1)
-k_indices = np.where(k_mask)[0]
+# ℓ to use
+ells_to_use = [0]
+all_ells = [0, 2, 4]  #Cov matrix order
+mask = (k >= 0.02) & (k <= 0.3)
+k_indices = np.where(mask)[0]
+n_k_selected = len(k_indices)
 
-multipole_offset = {0: 0 * N_k, 2: 1 * N_k, 4: 2 * N_k}
+indices = []
+for i, ell in enumerate(all_ells):
+    if ell in ells_to_use:
+        indices.extend([i * n_k_total + idx for idx in k_indices])
 
-indices_selected = []
-for ell in ell_selected:
-    offset = multipole_offset[ell]
-    indices_selected.extend(offset + k_indices)
+cov = cov[np.ix_(indices, indices)]
 
-indices_selected = np.array(indices_selected)
-
-cov = np.loadtxt('/pscratch/sd/n/ndeiosso/BGS_ANY_DR2/DR2/LSS/loa-v1/LSScats/v1.1/desipipe/cov_2pt/thecov/v1.1/prerecon/Uend/cov_gaussian_BGS_BRIGHT-20.2_GCcomb_z0.1_0.25.txt')
-cov = cov[np.ix_(indices_selected, indices_selected)]
-
+wmatrix = load_wmatrix('/global/cfs/cdirs/desi/survey/catalogs/DA2/analysis/loa-v1/LSScats/v1.1/BAO/unblinded/desipipe/2pt/pk/wmatrix_smooth_BGS_BRIGHT-21.35_GCcomb_z0.1-0.4_default_FKP_lin_nran18_cellsize6_boxsize4000.npy')
 
 print("\nData:")
 print(f"k lenght: {len(k_selected)}")
@@ -99,6 +109,7 @@ print(theory.params.names())
 observable = TracerPowerSpectrumMultipolesObservable(
     data=data,
     covariance=cov,
+    wmatrix=wmatrix,
     k=k_selected,
     kinlim=(0.001, 0.35),
     ells=ell_to_include,
@@ -124,6 +135,7 @@ params['sigmaper'].update(fixed=False)
     
 for name in params.basenames():
     if name.startswith('al2_'): params[name].update(value=0., fixed=True)
+    if name.startswith('al4_'): params[name].update(value=0., fixed=True)    
     if name.startswith('al0_'): params[name].update(prior={'dist': 'norm', 'loc': 0., 'scale': 1e4}, fixed=False)
         
 params['b1'].update(prior={'limits': [0.2, 4.]})
@@ -153,7 +165,7 @@ print("\n" + "="*50 + " CONFIG " + "="*50)
 ##Fit
 profiler = MinuitProfiler(likelihood, seed=42)
 print("\nFitting BAO starting...")
-profiles = profiler.maximize(niterations=30)
+profiles = profiler.maximize(niterations=10)
 #
 #
 print("\n" + "="*50 + " RESULTS " + "="*50)
