@@ -55,7 +55,7 @@ n_k_selected = len(k_indices)
 wmatrix = load_wmatrix('/global/cfs/cdirs/desi/survey/catalogs/DA2/analysis/loa-v1/LSScats/v1.1/BAO/unblinded/desipipe/2pt/pk/wmatrix_smooth_BGS_BRIGHT-21.35_GCcomb_z0.1-0.4_default_FKP_lin_nran18_cellsize6_boxsize4000.npy')
 
 
-z = 0.1
+z = 0.295
 template = BAOPowerSpectrumTemplate(z=z, fiducial='DESI', apmode='qisoqap')
 theory = DampedBAOWigglesTracerPowerSpectrumMultipoles(
     template=template,
