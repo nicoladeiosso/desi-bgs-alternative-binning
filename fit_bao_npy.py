@@ -27,44 +27,11 @@ def load_cov(self):
     return ObservableCovariance.load(self)
 
 
-def parse_real(complex_str):
-    pattern = re.compile(r'([+-]?\d+\.\d+e[+-]?\d+)')
-    match = pattern.match(complex_str)
-    if match:
-        return float(match.group(1))
-    raise ValueError("Unknow format")
-
-def read_power_spectrum_data(filename):
-    data = []
-    with open(filename, 'r') as f:
-        for line in f:
-            parts = line.split()
-            if not parts or not parts[0].isdigit():
-                continue
-            
-            try:
-                kmid = float(parts[1])
-                kavg = float(parts[2])
-                P0 = parse_real(parts[3])
-                P2 = parse_real(parts[4])
-                P4 = parse_real(parts[5])
-                data.append((kmid, kavg, P0, P2, P4))
-            except ValueError as e:
-                print("Parsing error:", e)
-                continue
-    
-    return np.array(data)
-
-txt_path = '/global/cfs/cdirs/desi/survey/catalogs/DA2/analysis/loa-v1/LSScats/v1.1/BAO/unblinded/desipipe/2pt/pk/pkpoles_BGS_BRIGHT-21.35_GCcomb_z0.1-0.4_default_FKP_lin_nran18_cellsize6_boxsize4000_d0.001.txt'
-
-data_array = read_power_spectrum_data(txt_path)
-
-#k = data_array[:, 0]
-
-k = poles_npy.kavg
 
 fn_npy = "/global/cfs/cdirs/desi/survey/catalogs/DA2/analysis/loa-v1/LSScats/v1.1/BAO/unblinded/desipipe/2pt/pk/pkpoles_BGS_BRIGHT-21.35_GCcomb_z0.1-0.4_default_FKP_lin_nran18_cellsize6_boxsize4000.npy"
 poles_npy = PowerSpectrumStatistics.load(fn_npy)
+
+k = poles_npy.kavg
 pk = poles_npy.get_power(divide_wnorm=True, remove_shotnoise=True)
 
 cov = load_cov('/global/cfs/cdirs/desi/survey/catalogs/DA2/analysis/loa-v1/LSScats/v1.1/BAO/unblinded/desipipe/cov_2pt/thecov/v1.1/covariance_power_BGS_BRIGHT-21.35_GCcomb_z0.1-0.4_default_FKP_lin.npy')
