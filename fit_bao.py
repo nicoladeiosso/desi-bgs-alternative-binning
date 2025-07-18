@@ -96,7 +96,7 @@ print(f"k values: {k_selected[:5]}...{k_selected[-5:]}")
 print(f"P0: {p0_selected[:5]}...{p0_selected[-5:]}")
 print(f"P2: {p2_selected[:5]}...{p2_selected[-5:]}")
 
-z = 0.1
+z = 0.295
 template = BAOPowerSpectrumTemplate(z=z, fiducial='DESI', apmode='qisoqap')
 theory = DampedBAOWigglesTracerPowerSpectrumMultipoles(
     template=template,
