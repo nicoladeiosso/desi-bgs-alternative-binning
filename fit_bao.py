@@ -89,6 +89,7 @@ for i, ell in enumerate(all_ells):
 cov = cov[np.ix_(indices, indices)]
 
 wmatrix = load_wmatrix('/global/cfs/cdirs/desi/survey/catalogs/DA2/analysis/loa-v1/LSScats/v1.1/BAO/unblinded/desipipe/2pt/pk/wmatrix_smooth_BGS_BRIGHT-21.35_GCcomb_z0.1-0.4_default_FKP_lin_nran18_cellsize6_boxsize4000.npy')
+wm = np.load('/global/cfs/cdirs/desi/survey/catalogs/DA2/analysis/loa-v1/LSScats/v1.1/BAO/unblinded/desipipe/2pt/pk/wmatrix_smooth_BGS_BRIGHT-21.35_GCcomb_z0.1-0.4_default_FKP_lin_nran18_cellsize6_boxsize4000.npy', allow_pickle = True).item()
 
 print("\nData:")
 print(f"k lenght: {len(k_selected)}")
@@ -96,7 +97,7 @@ print(f"k values: {k_selected[:5]}...{k_selected[-5:]}")
 print(f"P0: {p0_selected[:5]}...{p0_selected[-5:]}")
 print(f"P2: {p2_selected[:5]}...{p2_selected[-5:]}")
 
-z = 0.295
+z = wm['attrs']['zeff']
 template = BAOPowerSpectrumTemplate(z=z, fiducial='DESI', apmode='qisoqap')
 theory = DampedBAOWigglesTracerPowerSpectrumMultipoles(
     template=template,
