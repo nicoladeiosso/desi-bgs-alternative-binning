@@ -13,6 +13,17 @@ from cosmoprimo.fiducial import DESI
 setup_logging()
 cosmo = DESI()
 
+
+def load_wmatrix(self, mode='poles'):
+    """Load matrix."""
+    from pypower import MeshFFTWindow, BaseMatrix
+    toret = MeshFFTWindow.load(self)
+    try:
+        toret = getattr(toret, mode)
+    except AttributeError:
+        toret =  BaseMatrix.load(self)
+    return toret
+
 def parse_real(complex_str):
     pattern = re.compile(r'([+-]?\d+\.\d+e[+-]?\d+)')
     match = pattern.match(complex_str)
@@ -28,11 +39,11 @@ def read_power_spectrum_data(filename):
             if not parts or not parts[0].isdigit():
                 continue
             try:
-                kmid = float(parts[1])
+                kavg = float(parts[2])
                 P0 = parse_real(parts[3])
                 P2 = parse_real(parts[4])
                 P4 = parse_real(parts[5])
-                data.append((kmid, P0, P2, P4))
+                data.append((kavg, P0, P2, P4))
             except ValueError:
                 continue
     return np.array(data)
@@ -64,7 +75,7 @@ def standardize_basename(pk_file):
 
 
     
-def fit_pk_cov(pk_file, cov_file, output_dir, is_postrecon=False, kmin=0.02, kmax=0.3):
+def fit_pk_cov(pk_file, cov_file, wm_file, output_dir, is_postrecon=False, kmin=0.02, kmax=0.3):
     basename = os.path.splitext(os.path.basename(pk_file))[0]
     print(f"\n>>> Fit per:\n  PK  = {pk_file}\n  COV = {cov_file}")
     # Lettura dati
@@ -85,42 +96,43 @@ def fit_pk_cov(pk_file, cov_file, output_dir, is_postrecon=False, kmin=0.02, kma
     data = np.concatenate([data_dict[ell] for ell in ell_to_include])
 
     cov = np.loadtxt(cov_file)
-    dk_cov = 0.005
-    k_cov = np.arange(0, 0.3, dk_cov) + dk_cov / 2
-    N_k = len(k_cov)
+    n_k_total = len(k)  # Esempio: 60 punti totali
+    
+    # ℓ to use
+    ells_to_use = [0]
+    all_ells = [0, 2, 4]  #Cov matrix order
+    mask = (k >= 0.02) & (k <= 0.3)
+    k_indices = np.where(mask)[0]
+    n_k_selected = len(k_indices)
+    
+    indices = []
+    for i, ell in enumerate(all_ells):
+        if ell in ells_to_use:
+            indices.extend([i * n_k_total + idx for idx in k_indices])
+    
+    cov = cov[np.ix_(indices, indices)]
 
-    k_mask = np.isclose(k_cov[:, None], k_selected[None, :], atol=1e-10).any(axis=1)
-    k_indices = np.where(k_mask)[0]
+    wmatrix=load_wmatrix(wm_file)
+    wm=np.load(wm_file, allow_pickle = True).item()
 
-    multipole_offset = {0: 0 * N_k, 2: 1 * N_k, 4: 2 * N_k}
-
-    indices_selected = []
-    for ell in ell_selected:
-        offset = multipole_offset[ell]
-        indices_selected.extend(offset + k_indices)
-
-    indices_selected = np.array(indices_selected)
-    cov = cov[np.ix_(indices_selected, indices_selected)]
-
-    # Setup model
-    z = 0.1  
-    template = BAOPowerSpectrumTemplate(z=z, fiducial='DESI', apmode='qisoqap')
+    # Setup modello
+    z = wm['attrs']['zeff'] 
+    template = BAOPowerSpectrumTemplate(z=z, fiducial='DESI', apmode='qiso')
     theory = DampedBAOWigglesTracerPowerSpectrumMultipoles(template=template, ells=ell_to_include, broadband='pcs')
-    observable = TracerPowerSpectrumMultipolesObservable(data=data, covariance=cov, k=k_selected, kinlim=(0.001, 0.35), ells=ell_to_include, theory=theory)
+    observable = TracerPowerSpectrumMultipolesObservable(data=data, covariance=cov, wmatrix=wmatrix, k=k_selected, kinlim=(0.001, 0.35), ells=ell_to_include, theory=theory)
     likelihood = ObservablesGaussianLikelihood(observables=[observable])
 
-    print(theory.params.names())
-    
-    # Parameters
+    # Parametri
     params = likelihood.runtime_info.pipeline.params
-    params['qap'].update(value=1., fixed=True)
+    #params['qap'].update(value=1., fixed=True)
     params['dbeta'].update(value=1., fixed=True)
     params['sigmapar'].update(fixed=False)
     params['sigmaper'].update(fixed=False)
 
     for name in params.basenames():
         if name.startswith('al2_'): params[name].update(value=0., fixed=True)
-        if name.startswith('al0_'): params[name].update(prior={'dist': 'norm', 'loc': 0., 'scale': 1e4})
+        if name.startswith('al4_'): params[name].update(value=0., fixed=True)
+        if name.startswith('al0_'): params[name].update(prior={'dist': 'norm', 'loc': 0., 'scale': 1e4}, fixed=False)
 
     params['b1'].update(prior={'limits': [0.2, 4.]})
     params['qiso'].update(prior={'limits': [0.8, 1.2]})
@@ -142,10 +154,6 @@ def fit_pk_cov(pk_file, cov_file, output_dir, is_postrecon=False, kmin=0.02, kma
     if likelihood.mpicomm.rank == 0:
         likelihood.log_info('Use analytic marginalization for {}.'.format(likelihood.all_params.names(solved=True)))
 
-    solved_params = likelihood.all_params.select(solved=True)
-    print("Marginalized Params(solved):")
-    print(sorted(p.basename for p in solved_params))
-    
     profiler = MinuitProfiler(likelihood, seed=42)
     profiles = profiler.maximize(niterations=50)
 
@@ -158,7 +166,7 @@ def fit_pk_cov(pk_file, cov_file, output_dir, is_postrecon=False, kmin=0.02, kma
     with open(result_tex_path, 'w') as f:
         f.write(profiles.to_stats(tablefmt='latex'))
 
-    print(f"Saved: {result_path}, {result_tex_path}")
+    print(f"Salvati: {result_path}, {result_tex_path}")
     #model_prediction = observable(**params.to_dict())
     ## Salva plot
     #plt.figure()
@@ -171,39 +179,100 @@ def fit_pk_cov(pk_file, cov_file, output_dir, is_postrecon=False, kmin=0.02, kma
     #plt.savefig(os.path.join(output_dir, f'{basename}_fit_plot.png'))
     #plt.close()
 
-    print(f"Fit ended for {basename}")
+    print(f"Finito fit per {basename}")
 
-def run_all_fits(pk_dir, cov_dir, output_dir, is_postrecon=False):
+#def run_all_fits(pk_dir, cov_dir, output_dir, is_postrecon=False):
+#    os.makedirs(output_dir, exist_ok=True)
+#
+#    pk_files = sorted(glob(os.path.join(pk_dir, 'pkpoles_BGS_BRIGHT-20.2_*.txt')))
+#    cov_files = sorted(glob(os.path.join(cov_dir, 'cov_gaussian_*.txt')))
+#
+#    for pk in pk_files:
+#        basename = standardize_basename(pk)
+#        matching_covs = [c for c in cov_files if basename in c]
+#        if not matching_covs:
+#            print(f"Cov non trovata per {basename}")
+#            continue
+#        try:
+#            fit_pk_cov(pk, matching_covs[0], output_dir, is_postrecon=is_postrecon)
+#        except Exception as e:
+#            print(f"Errore su {basename}: {e}")
+#
+## Esegui per prerecon
+#run_all_fits(
+#    pk_dir='/global/cfs/cdirs/desi/survey/catalogs/DA2/analysis/loa-v1/LSScats/v1.1/BAO/unblinded/desipipe/2pt/pk',
+#    cov_dir='/pscratch/sd/n/ndeiosso/BGS_ANY_DR2/DR2/LSS/loa-v1/LSScats/v1.1/desipipe/cov_2pt/thecov/v1.1/prerecon/Uend',
+#    output_dir='fit_output_prerecon',
+#    is_postrecon=False
+#)
+#
+## Esegui per postrecon
+#run_all_fits(
+#    pk_dir='/global/cfs/cdirs/desi/survey/catalogs/DA2/analysis/loa-v1/LSScats/v1.1/BAO/unblinded/desipipe/2pt/recon_sm15_IFFT_recsym_z0.8-1.1/pk',
+#    cov_dir='/pscratch/sd/n/ndeiosso/BGS_ANY_DR2/DR2/LSS/loa-v1/LSScats/v1.1/desipipe/cov_2pt/thecov/v1.1/postrecon/Uend',
+#    output_dir='fit_output_postrecon',
+#    is_postrecon=True
+#)
+
+def run_all_fits(pk_cov_map, output_dir, is_postrecon=False):
     os.makedirs(output_dir, exist_ok=True)
 
-    pk_files = sorted(glob(os.path.join(pk_dir, 'pkpoles_*.txt')))
-    cov_files = sorted(glob(os.path.join(cov_dir, 'cov_gaussian_*.txt')))
+    for pk_glob, (cov_dir, wm_dir) in pk_cov_map.items():
+        print(f"\n>>> Analizzo pattern:\nPK  = {pk_glob}\nCOV = {cov_dir}\nWM  = {wm_dir}")
+        
+        pk_files = sorted(glob(pk_glob))
+        print(f"Trovati {len(pk_files)} file pk.")
+        
+        pk_files = [f for f in pk_files if 'SYS1_FKP' not in f]
+        print(f"File pk dopo filtro SYS1_FKP: {len(pk_files)}")
+    
+        cov_files = sorted(glob(os.path.join(cov_dir, 'cov_gaussian_*.txt')))
+        print(f"Trovati {len(cov_files)} file cov.")
 
-    for pk in pk_files:
-        basename = standardize_basename(pk)
-        matching_covs = [c for c in cov_files if basename in c]
-        if not matching_covs:
-            print(f"Cov not found for {basename}")
-            continue
-        try:
-            fit_pk_cov(pk, matching_covs[0], output_dir, is_postrecon=is_postrecon)
-        except Exception as e:
-            print(f"Error on {basename}: {e}")
+        wm_files = sorted(glob(os.path.join(wm_dir, 'wmatrix_smooth_*_default_FKP_lin_nran18_cellsize6_boxsize4000.npy')))
+        print(f"Trovati {len(wm_files)} file wm.")
+    
+        for pk in pk_files:
+            basename = standardize_basename(pk)
+            print(f"\nProcessing: {basename}")
 
-# Prerecon
-run_all_fits(
-    pk_dir='/pscratch/sd/n/ndeiosso/BGS_ANY_DR2/DR2/LSS/loa-v1/LSScats/v1.1/desipipe/2pt/pk',
-    cov_dir='/pscratch/sd/n/ndeiosso/BGS_ANY_DR2/DR2/LSS/loa-v1/LSScats/v1.1/desipipe/cov_2pt/thecov/v1.1/prerecon',
-    output_dir='fit_output_prerecon',
-    is_postrecon=False
-)
+            matching_covs = [c for c in cov_files if basename in c]
+            if not matching_covs:
+                print(f"⚠️ Cov non trovata per {basename}")
+                continue
 
-# Postrecon
-run_all_fits(
-    pk_dir='/pscratch/sd/n/ndeiosso/BGS_ANY_DR2/DR2/LSS/loa-v1/LSScats/v1.1/desipipe/2pt/recon_sm15_IFFT_recsym/pk',
-    cov_dir='/pscratch/sd/n/ndeiosso/BGS_ANY_DR2/DR2/LSS/loa-v1/LSScats/v1.1/desipipe/cov_2pt/thecov/v1.1/postrecon',
-    output_dir='fit_output_postrecon',
-    is_postrecon=True
-)
+            wm_basename = re.sub(r'_z(\d\.\d+)_(\d\.\d+)', r'_z\1-\2', basename)
+            matching_wm = [c for c in wm_files if wm_basename in c]
+            if not matching_wm:
+                print(f"⚠️ Window matrix non trovata per {basename}")
+                continue
+
+            try:
+                fit_pk_cov(pk, matching_covs[0], matching_wm[0], output_dir, is_postrecon=is_postrecon)
+            except Exception as e:
+                print(f"❌ Errore su {basename}: {e}")
 
 
+
+pk_cov_map_prerecon = {
+    '/global/cfs/cdirs/desi/survey/catalogs/DA2/analysis/loa-v1/LSScats/v1.1/BAO/unblinded/desipipe/2pt/pk/pkpoles_BGS_BRIGHT-20.2_*0_d0.005.txt':
+    ('/pscratch/sd/n/ndeiosso/BGS_ANY_DR2/DR2/LSS/loa-v1/LSScats/v1.1/desipipe/cov_2pt/thecov/v1.1/prerecon/Uend',
+    '/global/cfs/cdirs/desi/survey/catalogs/DA2/analysis/loa-v1/LSScats/v1.1/BAO/unblinded/desipipe/2pt/pk'),
+    '/global/cfs/cdirs/desi/survey/catalogs/DA2/analysis/loa-v1/LSScats/v1.1/BAO/unblinded/desipipe/2pt/pk/pkpoles_BGS_BRIGHT-21.35_*0_d0.005.txt':
+        ('/global/cfs/cdirs/desi/users/oalves/thecovs/y3/unblinded/loa-v1/v1.1/pre',
+        '/global/cfs/cdirs/desi/survey/catalogs/DA2/analysis/loa-v1/LSScats/v1.1/BAO/unblinded/desipipe/2pt/pk') 
+}
+
+run_all_fits(pk_cov_map_prerecon, 'fit_output_prerecon', is_postrecon=False)
+#
+
+pk_cov_map_postrecon = {
+    '/global/cfs/cdirs/desi/survey/catalogs/DA2/analysis/loa-v1/LSScats/v1.1/BAO/unblinded/desipipe/2pt/recon_sm15_IFFT_recsym/pk/pkpoles_BGS_BRIGHT-20.2_*0_d0.005.txt':
+        ('/pscratch/sd/n/ndeiosso/BGS_ANY_DR2/DR2/LSS/loa-v1/LSScats/v1.1/desipipe/cov_2pt/thecov/v1.1/postrecon/Uend',
+        '/global/cfs/cdirs/desi/survey/catalogs/DA2/analysis/loa-v1/LSScats/v1.1/BAO/unblinded/desipipe/2pt/pk'),
+    '/global/cfs/cdirs/desi/survey/catalogs/DA2/analysis/loa-v1/LSScats/v1.1/BAO/unblinded/desipipe/2pt/recon_sm15_IFFT_recsym/pk/pkpoles_BGS_BRIGHT-21.35_*0_d0.005.txt':
+        ('/global/cfs/cdirs/desi/users/oalves/thecovs/y3/unblinded/loa-v1/v1.1/post',
+        '/global/cfs/cdirs/desi/survey/catalogs/DA2/analysis/loa-v1/LSScats/v1.1/BAO/unblinded/desipipe/2pt/pk')
+}
+
+run_all_fits(pk_cov_map_postrecon, 'fit_output_postrecon', is_postrecon=True)
