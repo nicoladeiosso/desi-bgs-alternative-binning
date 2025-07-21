@@ -171,3 +171,21 @@ profiles = profiler.maximize(niterations=10)
 #
 print("\n" + "="*50 + " RESULTS " + "="*50)
 print(profiles.to_stats(tablefmt='pretty'))
+
+
+nchains = 8
+burnin = 0.5
+thin = 10
+chain_files = [f'fit_output_prerecon/chain_bao_{i}.npy' for i in range(nchains)]
+chains = nchains
+save_fn = [f'fit_output_prerecon/chain_bao_{i}.npy' for i in range(nchains)]
+sampler = EmceeSampler(likelihood, chains=nchains, nwalkers=4 * len(likelihood.varied_params), seed=42, save_fn=save_fn)
+chains = sampler.run(min_iterations=200, max_iterations=100000, check={'max_eigen_gr': 0.005})
+from desilike.samples import Chain
+chain = Chain.concatenate([
+    Chain.load(f).remove_burnin(0.5)[::10] for f in save_fn
+])
+print(chain.to_stats(tablefmt='pretty'))
+
+from desilike.samples import plotting
+plotting.plot_triangle(chain, fn='fit_output_prerecon/chain_bao_triangle.png')
