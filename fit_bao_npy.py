@@ -1,3 +1,8 @@
+############################################# DEPRECATED #####################################
+"""
+Implementation actually failed in this version. Use the txt implementation for correct result. TO develope for the future in order to have more flexibility.
+"""
+###############################################################################################
 import numpy as np
 from desilike.theories.galaxy_clustering import BAOPowerSpectrumTemplate, DampedBAOWigglesTracerPowerSpectrumMultipoles
 from desilike.observables.galaxy_clustering import TracerPowerSpectrumMultipolesObservable
