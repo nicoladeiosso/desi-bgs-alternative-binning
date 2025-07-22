@@ -183,14 +183,21 @@ def fit_pk_cov(pk_file, cov_file, wm_file, output_dir, is_postrecon=False, kmin=
 
     if mode in ['all', 'sample']:
         from desilike.samplers import EmceeSampler
+        
         nchains = 8
         burnin = 0.5
         thin = 10
+        
+        for param in likelihood.all_params.select(basename=['al*_*', 'bl*_*']):
+            if param.varied: param.update(derived='.prec')
+                
         chain_files = [os.path.join(output_dir, f'chain_{basename}_{i}.npy') for i in range(nchains)]
         chains = nchains
         save_fn = [os.path.join(output_dir, f'chain_{basename}_{i}.npy') for i in range(nchains)]
+        
         sampler = EmceeSampler(likelihood, chains=nchains, nwalkers=4 * len(likelihood.varied_params), seed=42, save_fn=save_fn)
         chains = sampler.run(min_iterations=200, max_iterations=100000, check={'max_eigen_gr': 0.005})
+        
         from desilike.samples import Chain
         chain = Chain.concatenate([
             Chain.load(f).remove_burnin(0.5)[::10] for f in save_fn
