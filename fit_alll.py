@@ -75,7 +75,7 @@ def standardize_basename(pk_file):
 
 
     
-def fit_pk_cov(pk_file, cov_file, wm_file, output_dir, is_postrecon=False, kmin=0.02, kmax=0.3):
+def fit_pk_cov(pk_file, cov_file, wm_file, output_dir, is_postrecon=False, kmin=0.02, kmax=0.3, mode='all'):
     basename = os.path.splitext(os.path.basename(pk_file))[0]
     print(f"\n>>> Fit per:\n  PK  = {pk_file}\n  COV = {cov_file}")
     # Lettura dati
@@ -153,20 +153,20 @@ def fit_pk_cov(pk_file, cov_file, wm_file, output_dir, is_postrecon=False, kmin=
             param.update(derived='.auto')
     if likelihood.mpicomm.rank == 0:
         likelihood.log_info('Use analytic marginalization for {}.'.format(likelihood.all_params.names(solved=True)))
+    if mode in ['all', 'profile']:
+        profiler = MinuitProfiler(likelihood, seed=42)
+        profiles = profiler.maximize(niterations=50)
 
-    profiler = MinuitProfiler(likelihood, seed=42)
-    profiles = profiler.maximize(niterations=50)
+        # Salva tabella
+        result_path = os.path.join(output_dir, f'{basename}_fit_results.txt')
+        with open(result_path, 'w') as f:
+            f.write(profiles.to_stats(tablefmt='pretty'))
 
-    # Salva tabella
-    result_path = os.path.join(output_dir, f'{basename}_fit_results.txt')
-    with open(result_path, 'w') as f:
-        f.write(profiles.to_stats(tablefmt='pretty'))
+        result_tex_path = os.path.join(output_dir, f'{basename}_fit_results.tex')
+        with open(result_tex_path, 'w') as f:
+            f.write(profiles.to_stats(tablefmt='latex'))
 
-    result_tex_path = os.path.join(output_dir, f'{basename}_fit_results.tex')
-    with open(result_tex_path, 'w') as f:
-        f.write(profiles.to_stats(tablefmt='latex'))
-
-    print(f"Salvati: {result_path}, {result_tex_path}")
+        print(f"Salvati: {result_path}, {result_tex_path}")
     #model_prediction = observable(**params.to_dict())
     ## Salva plot
     #plt.figure()
@@ -179,7 +179,38 @@ def fit_pk_cov(pk_file, cov_file, wm_file, output_dir, is_postrecon=False, kmin=
     #plt.savefig(os.path.join(output_dir, f'{basename}_fit_plot.png'))
     #plt.close()
 
-    print(f"Finito fit per {basename}")
+        print(f"Finito fit per {basename}")
+
+    if mode in ['all', 'sample']:
+        from desilike.samplers import EmceeSampler
+        nchains = 8
+        burnin = 0.5
+        thin = 10
+        chain_files = [os.path.join(output_dir, f'chain_{basename}_{i}.npy') for i in range(nchains)]
+        chains = nchains
+        save_fn = [os.path.join(output_dir, f'chain_{basename}_{i}.npy') for i in range(nchains)]
+        sampler = EmceeSampler(likelihood, chains=nchains, nwalkers=4 * len(likelihood.varied_params), seed=42, save_fn=save_fn)
+        chains = sampler.run(min_iterations=200, max_iterations=100000, check={'max_eigen_gr': 0.005})
+        from desilike.samples import Chain
+        chain = Chain.concatenate([
+            Chain.load(f).remove_burnin(0.5)[::10] for f in save_fn
+        ])
+        #print(chain.to_stats(tablefmt='pretty'))
+    
+        result_path = os.path.join(output_dir, f'chain_{basename}.txt')
+        with open(result_path, 'w') as f:
+            f.write(chain.to_stats(tablefmt='pretty'))
+    
+        result_tex_path = os.path.join(output_dir, f'chain_{basename}.tex')
+        with open(result_tex_path, 'w') as f:
+            f.write(chain.to_stats(tablefmt='latex'))
+    
+        print(f"Salvati: {result_path}, {result_tex_path}")
+        
+        from desilike.samples import plotting
+        plotting.plot_triangle(chain, fn=os.path.join(output_dir, f'chain_{basename}_triangle.png'))
+    
+        print(f"Finito sampling per {basename}")
 
 #def run_all_fits(pk_dir, cov_dir, output_dir, is_postrecon=False):
 #    os.makedirs(output_dir, exist_ok=True)
@@ -248,7 +279,7 @@ def run_all_fits(pk_cov_map, output_dir, is_postrecon=False):
                 continue
 
             try:
-                fit_pk_cov(pk, matching_covs[0], matching_wm[0], output_dir, is_postrecon=is_postrecon)
+                fit_pk_cov(pk, matching_covs[0], matching_wm[0], output_dir, is_postrecon=is_postrecon, mode='sample')
             except Exception as e:
                 print(f"❌ Errore su {basename}: {e}")
 
