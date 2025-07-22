@@ -5,6 +5,7 @@ from desilike.likelihoods import ObservablesGaussianLikelihood
 from desilike import setup_logging
 from cosmoprimo.fiducial import DESI
 from desilike.profilers import MinuitProfiler
+import argparse
 import re
 
 setup_logging()
