@@ -48,6 +48,12 @@ def read_power_spectrum_data(filename):
     
     return np.array(data)
 
+parser = argparse.ArgumentParser(description='Run BAO fit with selected mode.')
+parser.add_argument('--mode', type=str, default='all', choices=['all', 'profile', 'sample'],
+                    help="Execution mode: 'all', 'profile', or 'sample'")
+args = parser.parse_args()
+mode = args.mode
+
 txt_path = '/global/cfs/cdirs/desi/survey/catalogs/DA2/analysis/loa-v1/LSScats/v1.1/BAO/unblinded/desipipe/2pt/pk/pkpoles_BGS_BRIGHT-21.35_GCcomb_z0.1-0.4_default_FKP_lin_nran18_cellsize6_boxsize4000_d0.005.txt'
 
 data_array = read_power_spectrum_data(txt_path)
@@ -191,8 +197,3 @@ if mode in ['all', 'sample']:
     from desilike.samples import plotting
     plotting.plot_triangle(chain, fn='fit_output_prerecon/chain_bao_triangle.png')
 
-parser = argparse.ArgumentParser(description='Run BAO fit with selected mode.')
-parser.add_argument('--mode', type=str, default='all', choices=['all', 'profile', 'sample'],
-                    help="Execution mode: 'all', 'profile', or 'sample'")
-args = parser.parse_args()
-mode = args.mode
