@@ -181,9 +181,15 @@ if mode in ['all', 'profile']:
     print(profiles.to_stats(tablefmt='pretty'))
 
 if mode in ['all', 'sample']:
+    from desilike.samplers import EmceeSampler
+    
     nchains = 8
     burnin = 0.5
     thin = 10
+    
+    for param in likelihood.all_params.select(basename=['al*_*', 'bl*_*']):
+        if param.varied: param.update(derived='.prec')
+            
     chain_files = [f'fit_output_prerecon/chain_bao_{i}.npy' for i in range(nchains)]
     chains = nchains
     save_fn = [f'fit_output_prerecon/chain_bao_{i}.npy' for i in range(nchains)]
