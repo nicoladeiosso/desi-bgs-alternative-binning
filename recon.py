@@ -97,7 +97,7 @@ def compute_recon(data_fn, rand_fns, region='GCcomb', output_dir='postrecon',
         data_weights=data_weights,
         randoms_positions=rand_positions, 
         randoms_weights=rand_weights, 
-        nmesh=512, 
+        cellsize=6, 
         boxsize=4000, 
         position_type='xyz',
         fft_plan='estimate'
