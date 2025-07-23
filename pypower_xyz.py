@@ -221,7 +221,6 @@ def compute_power_spectrum(data_fn, rand_fns, mag = 20.2, region='GCcomb', outpu
         edges={'step': dk, 'min': kmin, 'max': kmax},
         boxsize=boxsize,
         cellsize=cellsize,
-        nmesh=512,
         los='firstpoint',
         position_type='xyz',
         resampler='tsc',
