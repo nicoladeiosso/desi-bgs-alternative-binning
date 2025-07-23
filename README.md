@@ -20,6 +20,7 @@ Use: python nz_pimped.py
 # mag_cut.py and and mag_cut_rand.py
 Need to be merged in a single script, it remains like that from the beginning. Cross checked respect to the original mag_cut catalog for the fiducial analysis. 
 Use: so flags included as for the nz scripts, just launch them with python
+EDIT: mag_cut_rand.py is not actually needed anymore for the porpouse of this project
 
 # recon.py 
 Reconstruction of the catalogs. It seems to work properly but maybe can be updated to be more flexible (paths and output need to be put in the script, no flags) 
@@ -67,12 +68,17 @@ Use:
 srun -c 256 python3 generate_cov_pre.py --tracer BGS_BRIGHT-20.2 --region GCcomb --boxsize boxsize4000.0 --zmin 0.1 --zmax 0.25
 ```
 
-# fit_pimped_bao.py and fit_alll.py
-BAO fit. One is for a particular case, the other one for all the files. It works properly, cross-checked with the fiducial analysis. The pimped one generates a txt and a tex file with the best fit values. All generate also latex tabs for every case (Post recon GCcomb, for example) with best fit results and chi2 for every magcut case, and plots with q_iso values.
+# fit_bao.py and fit_alll.py
+BAO fit. One is for a particular case, the other one for all the files. It works properly, cross-checked with the fiducial analysis. The basic one generates a txt and a tex file with the best fit values, chains and a contour plot with sample valus, considering argmax as a central value. All generate also latex tabs for every case (Post recon GCcomb, for example) with best fit results and chi2 for every magcut case, plots with q_iso values, chains and contour plots as well.
 Use:
 
 ```bash
-python fit_pimped.py
+python fit_bao.py --mode 'all'
+```
+and
+
+```bash
+python fit_alll.py
 ```
 
 Catalog: prerecon are in ANY_magcut_catalog, postrecon are in postrecon (to be uploaded if needed)
