@@ -91,7 +91,7 @@ def compute_recon(data_fn, rand_fns, region='GCcomb', output_dir='postrecon',
     
     # Initialize reconstruction
     recon = IterativeFFTReconstruction(
-        f=0.68, 
+        f=0.69, 
         bias=1.5, 
         data_positions=data_positions, 
         data_weights=data_weights,
