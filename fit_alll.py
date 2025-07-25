@@ -133,6 +133,7 @@ def fit_pk_cov(pk_file, cov_file, wm_file, output_dir, is_postrecon=False, kmin=
         if name.startswith('al2_'): params[name].update(value=0., fixed=True)
         if name.startswith('al4_'): params[name].update(value=0., fixed=True)
         if name.startswith('al0_'): params[name].update(prior={'dist': 'norm', 'loc': 0., 'scale': 1e4}, fixed=False)
+        if name.startswith('bl*_'): params[name].update(value=0., fixed=True)
 
     params['b1'].update(prior={'limits': [0.2, 4.]})
     params['qiso'].update(prior={'limits': [0.8, 1.2]})
