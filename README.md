@@ -1,4 +1,4 @@
-# desi-pimped-bgs
+# desi-bgs-alternative-binning
 Repository for scripts, products and fits for the DR2 BGS analysis
 
 Scipts probably needs some improvements, especially for the production of new catalogs. For now, these are made to produce only un cutted catalog at time (for magnitude cut and region) and then, separately, the other code recontruct catalogs for one cut at time but for all the three regions.
@@ -13,9 +13,9 @@ Use:
 python nz.py
 ```
 
-# nz_pimped.py
+# nz_sn.py
 Same as nz.py but include Pk value for the evaluation of the shot noise contribution respect to the measurements
-Use: python nz_pimped.py
+Use: python nz_sn.py
 
 # mag_cut.py and and mag_cut_rand.py
 Need to be merged in a single script, it remains like that from the beginning. Cross checked respect to the original mag_cut catalog for the fiducial analysis. 
