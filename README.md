@@ -4,6 +4,8 @@ Repository for scripts, products and fits for the DR2 BGS analysis
 Scipts probably needs some improvements, especially for the production of new catalogs. For now, these are made to produce only un cutted catalog at time (for magnitude cut and region) and then, separately, the other code recontruct catalogs for one cut at time but for all the three regions.
 Also, nomenclature needs to be updated 
 
+### Sorry for the previous names of some files! As a non-native speaker I was not aware of the meaning. ###
+
 ### Scripts and usage ###
 
 # nz.py
