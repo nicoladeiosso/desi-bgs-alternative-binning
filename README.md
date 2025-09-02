@@ -31,7 +31,7 @@ Use:
 python recon.py
 ```
 
-# pypower_xyz_b.py
+# pypower_xyz_b.py  ##DEPRECATED##
 Compute the power spectra and window function for a given set of data and random. About the nomencalture: xyz because is the version that uses xyz coordinates, converted form RA, DEC and Z. b because at the beginning it was made just for bright catas, but now the name refers to the new and proper version for the computation of the window function. Looking at the output, the pk produced are almost identical to the fiducial ones, with some minor differences at very large scales, but there is the problem related to the use of angular weigts, that maybe could help with the pk shape and than the covariance generation. Indeed, this in not so efficient in parallelization. 
 For comparison, there is also the pypower_xyz.py with the original settings for window matrix computation (with no weights and old routind for window)
 Use: there is a small difference between NGC/SGC and GCcomb. Example for BRIGHT cat:
@@ -54,6 +54,12 @@ python pypower_xyz_b.py \
 
 For the number of rand, you can also use the flag --nrand and define the path like --rand /global/cfs/cdirs/desi/survey/catalogs/DA2/LSS/loa-v1/LSScats/v1.1/nonKP/BGS_BRIGHT-20.2_NGC_*_clustering.ran.fits
 For the output dir, you can use the flag --output-dir
+
+# pkrun.py
+Actaul tool for pk computation.
+```bash
+srun -n 128 python pkrun.py --tracer BGS_ANY-20.2 --basedir '/global/cfs/cdirs/desi/users/ndeiosso/archive/BGS_ANY_DR2/postrecon' --survey DA2 --verspec loa-v1 --version v1.1 --region NGC SGC --zlim 0.1 0.25 --weight_type FKP --boxsize 4000 --cellsize 6 --P0 7000 --nran 18 --outdir 'postrecon' --rebinning 'y' --calc_win 'y' --vis
+```
 
 # pk_cleaner.py
 Simple script for pk file cleaning from header and complex part, useful to have simple file to plot (for the plot, a command is implemented in pypower_xyz_b.py, as for the rebinning). Needed for the problems I'm having with notebooks.
@@ -82,5 +88,8 @@ and
 ```bash
 python fit_alll.py
 ```
+
+# zeff.py
+Tool for a fast estimation of zeff for the fit
 
 Catalog: prerecon are in ANY_magcut_catalog, postrecon are in postrecon (to be uploaded if needed)
