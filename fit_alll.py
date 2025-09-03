@@ -57,6 +57,28 @@ def get_cov_indices(k, kmin, kmax, n_k_total, ells_to_use, all_ells=[0,2,4]):
             indices.extend([i * n_k_total + idx for idx in k_indices])
     return indices, k_indices
 
+def get_zeff_from_filename(filename):
+    """Return effective redshift based on filename patterns."""
+    if "21.35" in filename:
+        if "0.1-0.4" in filename:
+            return 0.295
+        elif "0.25-0.4" in filename:
+            return 0.3338
+        elif "0.0-0.5" in filename:
+            return 0.3803
+        elif "0.3-0.5" in filename:
+            return 0.4246
+    elif "20.2" in filename:
+        if "0.1-0.4" in filename:
+            return 0.3336
+        elif "0.1-0.25" in filename:
+            return 0.1923
+        elif "0.0-0.5" in filename:
+            return 0.4214
+        elif "0.0-0.3" in filename:
+            return 0.2276
+    raise ValueError(f"No matching zeff rule for {filename}")
+    
 def standardize_basename(pk_file):
     basename = os.path.basename(pk_file)
 
@@ -117,6 +139,7 @@ def fit_pk_cov(pk_file, cov_file, wm_file, output_dir, is_postrecon=False, kmin=
 
     # Setup modello
     z = wm['attrs']['zeff'] 
+    #z = get_zeff_from_filename(pk_file)
     template = BAOPowerSpectrumTemplate(z=z, fiducial='DESI', apmode='qiso')
     theory = DampedBAOWigglesTracerPowerSpectrumMultipoles(template=template, ells=ell_to_include, broadband='pcs')
     observable = TracerPowerSpectrumMultipolesObservable(data=data, covariance=cov, wmatrix=wmatrix, k=k_selected, kinlim=(0.001, 0.35), ells=ell_to_include, theory=theory)
